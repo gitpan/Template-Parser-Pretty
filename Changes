@@ -1,6 +1,8 @@
 Revision history for Perl extension Template::Parser::Pretty.
 
+0.02  Thu Feb  9 22:58:20 2006
+    - POD fixlet
+
 0.01  Thu Feb  9 04:41:28 2006
 	- original version; created by h2xs 1.23 with options
 		-A -X --skip-exporter -n Template::Parser::Pretty
-

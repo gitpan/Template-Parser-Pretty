@@ -7,7 +7,7 @@ use warnings;
 
 use base qw(Template::Parser);
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 sub new {
     my $class = shift;
@@ -181,18 +181,15 @@ indentation directives:
     [% BLOCK foo %] [%# params: bar, indent %]
         [% outer = tab(indent) %]
         [% inner = tab(add(indent, 1)) %]
-
         [% outer %]
-        <foo>
 
+        <foo>
             [% FOR baz IN bar %]
 
                 [% nl %] [% inner %]
                 <bar baz="[% baz %]" />
 
-            [% END %]
-
-		[% nl %] [% outer %]
+            [% END %] [% nl %] [% outer %]
         </foo>
         
     [% END %]
@@ -220,8 +217,8 @@ arguments e.g.
     my $parser = Template::Parser::Pretty->new(PRE_CHOMP => 0, POST_CHOMP => 2);
 
     my $config = {
-        INCLUDE_PATH    => '.',
-        PARSER            => $parser
+        INCLUDE_PATH  => '.',
+        PARSER        => $parser
     };
 
     my $template = Template->new($config);
@@ -234,7 +231,7 @@ arguments e.g.
 
 =item * L<Template|Template> 
 
-=item * <Template::Parser::LocalizeNewlines|Template::Parser::LocalizeNewlines>
+=item * L<Template::Parser::LocalizeNewlines|Template::Parser::LocalizeNewlines>
 
 =item * http://www.mail-archive.com/templates@template-toolkit.org/msg07575.html
 
@@ -244,7 +241,7 @@ arguments e.g.
 
 =head1 VERSION
 
-0.01
+0.02
 
 =head1 AUTHOR
 
