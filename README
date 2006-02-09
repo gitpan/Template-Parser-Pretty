@@ -1,0 +1,29 @@
+Template-Parser-Pretty version 0.01
+===================================
+
+This module allows templates to be laid out in the most readable way,
+while enhancing control over spacing by consuming *all* whitespace
+(including newlines) before and after directives (unless overridden by the
+customary + and - prefix and postfix options).
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+	Template::Parser
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2006 by chocolateboy <chocolate.boy@email.com>
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
