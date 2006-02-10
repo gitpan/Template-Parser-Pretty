@@ -5,16 +5,27 @@ require 5.004;
 use strict;
 use warnings;
 
+use vars qw($VERSION $CHOMP_OPTION);
 use base qw(Template::Parser);
 
-our $VERSION = 0.02;
+use constant CHOMP_KILL => 3;
+
+use Template::Constants qw(:chomp);
+
+$VERSION = '0.90';
+
+$CHOMP_OPTION = {
+	'+'	=> CHOMP_NONE,
+	'-'	=> CHOMP_ALL,
+	'~'	=> CHOMP_KILL
+};
 
 sub new {
     my $class = shift;
     my $config = ($_[0] && UNIVERSAL::isa($_[0], 'HASH')) ? shift : { @_ };
 
-    $config->{PRE_CHOMP}  = 1 unless (defined $config->{PRE_CHOMP});
-    $config->{POST_CHOMP} = 1 unless (defined $config->{POST_CHOMP});
+    $config->{PRE_CHOMP}  = CHOMP_KILL unless (defined $config->{PRE_CHOMP});
+    $config->{POST_CHOMP} = CHOMP_KILL unless (defined $config->{POST_CHOMP});
 
     return $class->SUPER::new($config);
 }
@@ -27,7 +38,7 @@ sub new {
 
 sub split_text {
     my ($self, $text) = @_;
-    my ($pre, $dir, $prelines, $dirlines, $postlines, $chomp, $tags, @tags);
+    my ($pre, $dir, $prelines, $dirlines, $postlines, $tags, @tags);
     my $style = $self->{STYLE}->[-1];
     my ($start, $end, $prechomp, $postchomp, $interp) = @$style{qw(START_TAG END_TAG PRE_CHOMP POST_CHOMP INTERPOLATE)};
     my @tokens = ();
@@ -53,38 +64,39 @@ sub split_text {
 
         # the CHOMP directive's options may modify the preceding text
         for ($dir) {
-            s/^([-+\#])?\s*//s; # remove leading whitespace and check for a '-' chomp flag
+            s/^([-+~\#])?\s*//s; # remove leading whitespace and check for a '-' chomp flag
 
             if ($1 && ($1 eq '#')) {
-                $dir = ($dir =~ /([-+])$/) ? $1 : ''; # comment out entire directive except for any chomp flag
+                $dir = ($dir =~ /([-+~])$/) ? $1 : ''; # comment out entire directive except for any chomp flag
             } else {
-                $chomp = ($1 && ($1 eq '+')) ? 0 : ($1 || $prechomp);
-                my $space = $prechomp == $self->SUPER::CHOMP_COLLAPSE ? ' ' : '';
-
                 # Template::Parser::Pretty 
-                if ($chomp && ($pre =~ /(\s+)$/)) {
-                    my $pre_whitespace = $1;
+				my $chomp = $1 ? $CHOMP_OPTION->{$1} : $prechomp;
+                my $space = $prechomp == CHOMP_COLLAPSE ? ' ' : '';
+				my $leading_whitespace_regex = $chomp == CHOMP_KILL ? qr{(\s+)$} : qr{((?:\n?[ \t]+)|\n)$};
 
-                    # remove (or collapse) *all* whitespace before the directive
-                    $pre =~ s/\s+$/$space/;
+                if ($chomp && ($pre =~ /$leading_whitespace_regex/)) {
+                    my $leading_whitespace = $1;
+
+                    # remove (or collapse) the selected whitespace before the directive
+                    $pre =~ s/$leading_whitespace_regex/$space/;
                 }
             }
 
-            s/\s*([-+])?\s*$//s; # remove trailing whitespace and check for a '-' chomp flag
+            s/\s*([-+~])?\s*$//s; # remove trailing whitespace and check for a '-' chomp flag
 
-            $chomp = ($1 && ($1 eq '+')) ? 0 : ($1 || $postchomp);
-
-            my $space = ($postchomp == &Template::Constants::CHOMP_COLLAPSE) ? ' ' : '';
+			my $chomp = $1 ? $CHOMP_OPTION->{$1} : $postchomp;
+			my $space = $postchomp == CHOMP_COLLAPSE ? ' ' : '';
+			my $trailing_whitespace_regex = $chomp == CHOMP_KILL ? qr{^(\s+)} : qr{^((?:[ \t]+\n?)|\n)};
 
             # Template::Parser::Pretty 
-            if ($chomp && ($text =~ /^(\s+)/)) {
-                my $post_whitespace = $1;
+            if ($chomp && ($text =~ /$trailing_whitespace_regex/)) {
+                my $trailing_whitespace = $1;
 
                 # increment the line counter if necessary
-                $postlines += ($post_whitespace =~ tr/\n/\n/); 
+                $postlines += ($trailing_whitespace =~ tr/\n/\n/); 
 
-                # now remove (or collapse) *all* whitespace after the directive
-                $text =~ s/^\s+/$space/;
+                # now remove (or collapse) the selected whitespace after the directive
+                $text =~ s/$trailing_whitespace_regex/$space/;
             }
         }
 
@@ -146,9 +158,18 @@ Template::Parser::Pretty - reader/writer friendly chomping for T2 templates
     use Template;
     use Template::Parser::Pretty;
 
+    my $parser = Template::Parser::Pretty->new();
+
+        # or, equivalently
+
+    my $parser = Template::Parser::Pretty->new(
+        PRE_CHOMP    => 3,
+        POST_CHOMP   => 3
+    );
+
     my $config = {
-        INCLUDE_PATH    => '.',
-        PARSER          => Template::Parser::Pretty->new()
+        PARSER       => $parser
+        ...
     };
 
     my $template = Template->new($config);
@@ -166,10 +187,46 @@ This means that templates optimized for readability (and writability) may be obl
 the indentation and spacing of the output and I<vice versa>. 
 
 This module allows templates to be laid out in the most readable way, while enhancing control over spacing
-by consuming B<all> whitespace (including newlines) before and after directives (unless overridden by the
+by consuming I<all> whitespace (including newlines) before and after directives (unless overridden by the
 customary C<+> and C<-> prefix and postfix options).
 
-As with the default parser, any whitespace B<inside> the preceding or following text is preserved,
+The old chomping behaviour can be enabled on a per-directive basis in templates that default to
+greedy chomping (as Template::Parser::Pretty templates do if no PRE_CHOMP or POST_CHOMP values are supplied).
+Likewise, greedy chomping can be selectively enabled in non-greedy templates by using a new directive option,
+C<~>, corresponding to the new default PRE_CHOMP/POST_CHOMP value of 3.
+
+e.g.
+
+    my $parser = Template::Parser::Pretty->new(
+        PRE_CHOMP    => 2,
+        POST_CHOMP   => 0
+    );
+
+    my $config = { PARSER => $parser };
+
+And, in the template:
+
+    [BLOCK foo %]
+
+        [%- IF 1 ~%]
+
+            bar
+
+        [%~ END +%]
+
+    [% END %]
+
+In this example, the C<~> directive consumes all of the whitespace around the embedded text, and is
+thus equivalent to:
+
+    [%- IF 1 %]bar[% END +%]
+
+The C<+> directive at the end of the C<IF> block turns on C<CHOMP_NONE> (0) for the suffixed whitespace,
+which is therefore not chomped; and the C<-> directive at the beginning of the C<IF> performs
+a CHOMP_COLLAPSE (2) chomp, which collapses the indentation and one newline to a single space,
+but leaves the whitespace before that intact.
+
+As with the default parser, any whitespace I<inside> the preceding or following text is preserved,
 so boilerplate only needs to concern itself with its surrounding whitespace.
 
 This leaves indentation and newlines under the explicit control of the template author, by any of the
@@ -196,34 +253,19 @@ indentation directives:
 
 Or by selectively turning off left and/or right chomping:
 
-[% IF 1 +%]
+    [% IF 1 +%]
 
-    ------------------------------------
-    | alpha | beta | gamma | vlissides |
-    ------------------------------------
-    |  foo  | bar  |  baz  |    quux   |
-    ------------------------------------
+        ------------------------------------
+        | alpha | beta | gamma | vlissides |
+        ------------------------------------
+        |  foo  | bar  |  baz  |    quux   |
+        ------------------------------------
 
-[%+ END %]
+    [%+ END %]
 
-Note that B<all> whitespace characters are chomped (i.e. [\r\n\f\t ]), including carriage
-returns, which C<Template::Parser> leaves unchaperoned (see L<Template::Parser::LocalizeNewlines>),
+Note that I<all> whitespace characters are chomped (i.e. [\r\n\f\t ]), including carriage
+returns, which Template::Parser leaves unchaperoned (see L<Template::Parser::LocalizeNewlines>),
 so this module does the right thing on non-Unix platforms.
-
-By default, C<Template::Parser::Pretty> sets C<PRE_CHOMP> and C<POST_CHOMP> to 1. Either or both of these
-can be overridden by passing 0 (no chomping) or 2 (collapse to a single space) as constructor
-arguments e.g.
-
-    my $parser = Template::Parser::Pretty->new(PRE_CHOMP => 0, POST_CHOMP => 2);
-
-    my $config = {
-        INCLUDE_PATH  => '.',
-        PARSER        => $parser
-    };
-
-    my $template = Template->new($config);
-
-    $template->process(...);
 
 =head1 SEE ALSO
 
@@ -241,7 +283,7 @@ arguments e.g.
 
 =head1 VERSION
 
-0.02
+0.90
 
 =head1 AUTHOR
 

@@ -1,10 +1,10 @@
-Template-Parser-Pretty version 0.02
+Template-Parser-Pretty version 0.90
 ===================================
 
-This module allows templates to be laid out in the most readable way,
-while enhancing control over spacing by consuming *all* whitespace
-(including newlines) before and after directives (unless overridden by the
-customary + and - prefix and postfix options).
+This module allows templates to be optimized for readability, while enhancing control over spacing
+by consuming all whitespace (including newlines) before and after directives.
+
+It supports this with a new PRE/POST_CHOMP option and a corresponding directive option.
 
 INSTALLATION
 

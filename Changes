@@ -1,5 +1,12 @@
 Revision history for Perl extension Template::Parser::Pretty.
 
+0.90  Thu Feb  9 23:57:55 2006
+	- API change - now fully backwards compatible with Template::Parser
+	- added a new PRE/POST_CHOMP setting, 3, to enable greedy chomping (on by default)
+	- added an option, '~', to enable greedy chomping on a per-directive basis
+    - added comprehensive tests for constructor args and directive options
+    - more documentation + POD fixlets
+
 0.02  Thu Feb  9 22:58:20 2006
     - POD fixlet
 
